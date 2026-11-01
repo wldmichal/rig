@@ -1,0 +1,51 @@
+# Preview for review (ADR 0003): render /digest/2026-10-28 as one HTML file and deploy it to GitHub
+# Pages straight from a build artifact, so the page never lands in the repo. The lane marker comes
+# from the LANE_MARKER secret; delete the secret and run this again to take the marker off.
+name: preview
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Save the digest page
+        env:
+          LANE_MARKER: ${{ secrets.LANE_MARKER }}
+          PORT: 8787
+        run: |
+          npm start &
+          for i in $(seq 30); do curl -sf http://localhost:8787/health >/dev/null && break; sleep 1; done
+          mkdir -p _site
+          curl -sf http://localhost:8787/digest/2026-10-28 -o _site/index.html
+          kill %1
+          grep -o '<span class="marker">[^<]*</span>' _site/index.html | sed 's/>[^<]*</>…</' # proves the banner rendered, without printing it
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+          retention-days: 1
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

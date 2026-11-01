@@ -1,10 +1,15 @@
-# Preview for review (ADR 0003): render /digest/2026-10-28 as one HTML file and deploy it to GitHub
+# Preview for review (ADR 0003): render one rig page as one HTML file and deploy it to GitHub
 # Pages straight from a build artifact, so the page never lands in the repo. The lane marker comes
 # from the LANE_MARKER secret; delete the secret and run this again to take the marker off.
+# How to run it: skill preview-on-pages (.agents/skills/).
 name: preview
 
 on:
   workflow_dispatch:
+    inputs:
+      page:
+        description: Path of the rig page to preview
+        default: /digest/2026-10-28
 
 permissions:
   contents: read
@@ -24,15 +29,17 @@ jobs:
         with:
           node-version: 22
       - run: npm install --no-audit --no-fund
-      - name: Save the digest page
+      - name: Save the page
         env:
           LANE_MARKER: ${{ secrets.LANE_MARKER }}
           PORT: 8787
+          PAGE: ${{ inputs.page }}
         run: |
+          [[ "$PAGE" =~ ^/[A-Za-z0-9/_-]*$ ]] || { echo "page must be a plain path, got: $PAGE"; exit 1; }
           npm start &
           for i in $(seq 30); do curl -sf http://localhost:8787/health >/dev/null && break; sleep 1; done
           mkdir -p _site
-          curl -sf http://localhost:8787/digest/2026-10-28 -o _site/index.html
+          curl -sf "http://localhost:8787$PAGE" -o _site/index.html
           kill %1
           grep -o '<span class="marker">[^<]*</span>' _site/index.html | sed 's/>[^<]*</>…</' # proves the banner rendered, without printing it
       - uses: actions/upload-pages-artifact@v3

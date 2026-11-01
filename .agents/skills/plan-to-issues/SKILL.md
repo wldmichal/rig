@@ -14,12 +14,14 @@ in a shell this agent can run.
 2. Draft the split as a table: title · plan section · scope · done when · blocked by.
    One issue per unit of work.
 3. **Stop and show the table to the human.** Publish nothing until they approve it.
-4. Ask the human what every issue here must carry (fields, labels, wording), unless it is
-   already written down in this session or in the repo.
-5. Create each issue in dependency order, so blocked-by can cite real numbers:
+4. Every issue carries the shape under [Issue shape](#issue-shape). Ask the human only about
+   anything beyond it.
+5. Create each issue in dependency order, so blocked-by can cite real numbers. Create the
+   plan's label first if it doesn't exist:
 
    ```sh
-   gh issue create --title "<title>" --body-file <tmp.md>
+   gh label create "plan:<plan>" --description "Plan: <plan>"
+   gh issue create --title "<title>" --label "plan:<plan>" --body-file <tmp.md>
    ```
 
 6. Record every issue URL from gh's output (not from memory) and reply with the list.
@@ -29,6 +31,26 @@ Closing one, with the closing comment from AGENTS.md:
 ```sh
 gh issue close <n> -c "<closing comment>"
 ```
+
+## Issue shape
+
+Agreed with the human on the morning-digest plan. The body opens with the source line, and the
+reviewer sorts by it and the label:
+
+```md
+Source: plan.md § <n>
+
+**Scope:** <what this issue changes, and what it leaves to other issues>
+
+**Done when:** <the plan's done condition, checkable>
+
+**Blocked by:** <#n, … or —; name anything outside the repo it waits on, e.g. a review>
+```
+
+- Label: `plan:<plan>`, the `plan:` value from plan.md's frontmatter.
+- A section split in two (e.g. types first, then the code) keeps the same `§ <n>` on both.
+- An issue whose done condition depends on someone else (a reviewer's look) stays open until
+  they confirm, even when the work is sent. Its blocked-by and closing comment say so.
 
 ## No `gh`
 
